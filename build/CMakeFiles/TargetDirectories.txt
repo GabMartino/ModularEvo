@@ -1,0 +1,4 @@
+/home/gabriele/Scrivania/ModularEvo/build/CMakeFiles/edit_cache.dir
+/home/gabriele/Scrivania/ModularEvo/build/CMakeFiles/spiderController.dir
+/home/gabriele/Scrivania/ModularEvo/build/CMakeFiles/rebuild_cache.dir
+/home/gabriele/Scrivania/ModularEvo/build/CMakeFiles/worldController.dir

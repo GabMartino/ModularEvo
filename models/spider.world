@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <world name="default">
+     <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    <!-- Simulation == real time -->
+    <physics type='ode'>
+        <max_step_size>0.001000</max_step_size>
+        <real_time_factor>1.000000</real_time_factor>
+        <real_time_update_rate>0</real_time_update_rate>
+    </physics>
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <plugin name="world" filename="libworldController.so"/>
+  </world>
+</sdf>
