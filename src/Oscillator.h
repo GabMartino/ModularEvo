@@ -8,38 +8,52 @@
 #include <stdlib.h>
 #include <iostream>
 #include <algorithm>
+#include <random>
+#include <boost/numeric/odeint/stepper/runge_kutta4.hpp>
 using namespace std;
 
+
+typedef std::vector< double > state_type;
+
 class Oscillator {
+
+    std::random_device rd;
+
+
     /// \brief parameters that controll the oscillation
-    double x, wxy, biasx;
-    double y, wyx, biasy;
     double out, wout, biasout, gain;
     double lastTickOfTime;
+    double previous_time;
+    vector<vector<double>> ode_matrix;
+    vector<double> actualState;
+
+    vector<double> nextState;
+    /// \brief Runge-Kutta 45 stepper
+    boost::numeric::odeint::runge_kutta4< state_type > stepper;
 
     /// \brief name of the oscillator
     string name;
-    /// \brief weights of the link to the near oscillators
-    vector<double> adjacent_oscillators_weights;
+
     /// close oscillators
     vector<Oscillator*> adjacent_oscillators;
-
 
 public:
         Oscillator(string name);
 
-
-        void update();
+        void setStateEquations();
+        void finalize();
+        void update(const double actualTime);
 
         /// \brief add a connections to another oscillator
         void addConnection(Oscillator* o);
 
         /// \brief print connections with other oscillator
-        void printConnections();
+        void printAllParameters();
 
         /// \brief Getters
         double getOutput(){ return out;};
-        double getX(){ return x;};
+        double getX(){ return this->actualState[0];};
+        double getY(){ return this->actualState[1];};
         string getName(){return this->name;};
 
 
@@ -47,12 +61,7 @@ public:
         void setOutsideConnection(string o, double value);
 
         /// \brief Setters
-        void setX(double x){ this->x = x; };
-        void setY(double y){ this->y = y; };
-        void setWxy(double wxy){ this->wxy = wxy; };
-        void setBiasX(double biasx){ this->biasx = biasx; };
-        void setWyx(double wyx){ this->wyx = wyx; };
-        void setBiasY(double biasy){ this->biasy = biasy; };
+
         void setWout(double wout){ this->wout = wout; };
         void setBiasOut(double biasout){ this->biasout = biasout; };
         void setGain(double gain){ this->gain = gain; };

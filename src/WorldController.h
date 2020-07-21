@@ -17,6 +17,9 @@ class WorldController : public WorldPlugin{
 
 
 protected:
+    /// \brief this ID is used to distinguish from other instance of gzserver
+    unsigned int ID;
+
     /// \brief A node used for transport
     transport::NodePtr nodeForReceiving;
     /// \brief A subscriber to a named topic.

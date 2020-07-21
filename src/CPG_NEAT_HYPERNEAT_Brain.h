@@ -52,16 +52,18 @@ public:
     CPG_NEAT_HYPERNEAT_Brain(physics::ModelPtr model,  sdf::ElementPtr _sdf, experiment kindOfEncoding, vector<double> input);
 
 
-    /// This method should be called at every increment of time step. Used for the test of robot
-    void update(const ::gazebo::common::UpdateInfo _info, gazebo::common::Time lastActuationTime_);
+    /// This method should be called at every increment of time step. Used for the multipleInstanceOpener of robot
+    void update(const double actualTime);
 
     /**
-     * This method should be called at the end of the test of a single genome.
-     * Set the fitness of the genome that was under test (distance), take the next genome and put that under test,
+     * This method should be called at the end of the multipleInstanceOpener of a single genome.
+     * Set the fitness of the genome that was under multipleInstanceOpener (distance), take the next genome and put that under multipleInstanceOpener,
      * or initialize the next generation
      */
-    double stepOfTest(const ::gazebo::common::UpdateInfo _info, double distance);
+    vector<double> stepOfTest(const ::gazebo::common::UpdateInfo _info, double distance);
 
+    vector<vector<bool>> getAdjacentMatrixOfLastBestGenome(){ return this->learner->adjacentMatrixOfNNOfLastBestGenome; };
+    vector<string> getTypesNeuronsOfLastBestGenome(){ return this->learner->NeuronTypesOfLastBestGenome; };
 };
 
 

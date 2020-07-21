@@ -44,7 +44,7 @@ public:
     unsigned int getNumberOfParameters(){ return this->numberOfParameters; };
 
     /// \brief This method will update the time position of each neuron ( Oscillator)
-    void update();
+    void update(const double actualTime);
 
     /// \brief set the parameters of the network from each equations of the first Oscillators to the last
     void setParameters(vector<double> param);

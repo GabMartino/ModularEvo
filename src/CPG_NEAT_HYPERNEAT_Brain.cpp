@@ -57,7 +57,7 @@ CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf
         cout<<"     Set NEAT Parameters for DIRECT Encoding"<<endl;
 
         /// Initialize the learning algorithm
-        this->learner = new Learner_NEAT_HyperNEAT(DIRECT, 2, this->nn->getNumberOfParameters()+1);
+        this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, this->externalInput.size()+1, this->nn->getNumberOfParameters());
 
         this->nn->setParameters(this->learner->getOutput(this->externalInput));
 
@@ -65,7 +65,9 @@ CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf
 
         cout<<"     Set HyperNEAT Parameters for INDIRECT Encoding."<<endl;
 
-        this->learner = new Learner_NEAT_HyperNEAT(INDIRECT, 7, 4);
+        unsigned int n_input = (this->nn->getMapOfConnections())[0].size() + this->externalInput.size() + 1;
+        unsigned int n_output = 3; // values of the equations
+        this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, n_input, n_output);
 
         this->learner->setMapOfConnections(this->nn->getMapOfConnections());
 
@@ -74,8 +76,10 @@ CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf
 
     }else{
         cout<<"     ERROR choosing kind of encoding."<<endl;
+        return;
     }
 
+    cout<<"[BRAIN] Brain Prepared."<<endl;
 }
 
 
@@ -85,36 +89,38 @@ CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf
  *
  * @param _info
  */
-void CPG_NEAT_HYPERNEAT_Brain::update(const ::gazebo::common::UpdateInfo _info, gazebo::common::Time lastActuationTime_) {
+void CPG_NEAT_HYPERNEAT_Brain::update(const double actualTime) {
     /// update the NN
-    this->nn->update();
+    this->nn->update(actualTime);
 
     /// update each Oscillators with the new values from the NN
     map<string, JointPositionMotor*>::iterator it = this->joints.begin();
     while( it != this->joints.end()){
 
-        /// CHECK WHAT VALUE SHOULD BE INSERTED IN THE JOINT
-        double output = this->nn->getOutputOfOscillator(it->first);
-        it->second->update(output);
+        it->second->update(this->nn->getOutputOfOscillator(it->first));
         it++;
     }
 }
 
 /**
- * This method takes the fitness as input, set that to the genome that was under test and prepare the next
+ * This method takes the fitness as input, set that to the genome that was under multipleInstanceOpener and prepare the next
  *
  * @param _info
  * @param distance
  */
-double CPG_NEAT_HYPERNEAT_Brain::stepOfTest(const ::gazebo::common::UpdateInfo _info, double distance){
+vector<double> CPG_NEAT_HYPERNEAT_Brain::stepOfTest(const ::gazebo::common::UpdateInfo _info, double distance){
 
-
-    double checkBestFitnessAvailable = this->learner->step(distance);
+    vector<double> checkBestFitnessAvailable = this->learner->step(distance);
 
     if(this->kindOfEncoding == DIRECT or this->kindOfEncoding == DIRECT_MOD){
+
         this->nn->setParameters(this->learner->getOutput(this->externalInput));
+
     }else if(this->kindOfEncoding == INDIRECT or this->kindOfEncoding == INDIRECT_MOD){
-        this->nn->setParameters(removeUnusedOutput(this->learner->getOutput(this->externalInput)));
+        vector<double> params = removeUnusedOutput(this->learner->getOutput(this->externalInput));
+
+        this->nn->setParameters(params);
+
     }
     return checkBestFitnessAvailable;
 }

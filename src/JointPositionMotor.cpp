@@ -26,9 +26,11 @@ JointPositionMotor::JointPositionMotor(physics::JointPtr joint){
 void JointPositionMotor::update(double value){
 
     // Motor noise in range +/- noiseLevel * actualValue
+    /*
     value += ((2 * ignition::math::Rand::DblUniform() * this->noise_) -
                this->noise_) *
             value;
+    */
     value = std::fmin(std::fmax(1e-5, value), 0.99999);
 
     this->positionTarget_ = this->lowerLimit_ +

@@ -6,35 +6,38 @@
 
 
 Learner_NEAT_HyperNEAT::Learner_NEAT_HyperNEAT(experiment kindOfEncoding, unsigned int n_input, unsigned int n_output){
+
+
     this->kindOfEncoding = kindOfEncoding;
 
     /// \brief set some parameters for NEAT
     this->params = new NEAT::Parameters();
-    this->params->PopulationSize = 10;
-    this->params->CrossoverRate = 0.5;
+    this->params->PopulationSize = 50;
+    this->params->CrossoverRate = 0.25;
     this->params->SurvivalRate = 0.2;
-    this->params->MutateAddNeuronProb = 0.25;
+    this->params->MutateAddNeuronProb = 0.10;
     this->params->MutateAddLinkProb = 0.4;
-    this->params->MutateRemLinkProb = 0.0;
+    //this->params->MutateRemLinkProb = 0.0001;
     this->params->AllowLoops = false;
-    this->params->MutateAddLinkFromBiasProb = 0.3;
-    this->params->WeightMutationMaxPower = 0.001;
-    this->params->WeightReplacementMaxPower = 0.3;
+    this->params->MutateAddLinkFromBiasProb = 0.05;
+    this->params->WeightMutationMaxPower = 0.005;
+    this->params->WeightReplacementMaxPower = 0.1;
     this->params->MutateWeightsSevereProb = 0.0;
     this->params->WeightMutationRate = 0.25;
-    this->params->WeightReplacementRate = 0.9;
+    this->params->WeightReplacementRate = 0.1;
     this->params->OverallMutationRate = 1.0;
 
-    this->params->ActivationFunction_UnsignedSigmoid_Prob = 0.3;
-
+    this->params->ActivationFunction_SignedSigmoid_Prob = 0.3;
     this->params->ActivationFunction_Tanh_Prob = 0.3;
     this->params->ActivationFunction_SignedGauss_Prob = 0.3;
+    this->params->ActivationFunction_SignedSine_Prob = 0.3;
+
     this->params->OldAgeTreshold = 35;
     this->params->RouletteWheelSelection = false;
     this->params->WeightDiffCoeff = 0.1;
     this->params->RecurrentProb = 0.0;
     this->params->RecurrentLoopProb = 0.0;
-
+    this->params->EliteFraction = 0.02;
     /// Set the shape of the genomes
     this->gen = new NEAT::Genome(0, n_input, 0, n_output, false, NEAT::TANH,
                                  NEAT::TANH, 0, *this->params, 0);
@@ -45,22 +48,22 @@ Learner_NEAT_HyperNEAT::Learner_NEAT_HyperNEAT(experiment kindOfEncoding, unsign
     fetchGenomes();
 
 }
-double Learner_NEAT_HyperNEAT::step(double fitness){
+vector<double> Learner_NEAT_HyperNEAT::step(double fitness){
 
-    double bestFitness = 0;
+    vector<double> bestFitness;
+    bestFitness.push_back(0);//TotalFitness
+    bestFitness.push_back(0);//ModularityFactor
 
     if(this->kindOfEncoding == DIRECT_MOD or this->kindOfEncoding == INDIRECT_MOD){
-        /// fetch the NN from the genome of which we want to test the modularity
+        /// fetch the NN from the genome of which we want to multipleInstanceOpener the modularity
         NEAT::Genome gen = (*(this->genomes[genomeIndex - 1]));
         NEAT::NeuralNetwork* net = new NEAT::NeuralNetwork();
         gen.BuildPhenotype(*net);
-
         fitness = alfa*fitness + (1 - alfa)*ModularityFactor(*net);
-
     }
 
     cout<<"Genome number "<<genomeIndex - 1<< " has fitness "<< fitness<<endl;
-    /// \brief set the fitness of the genome under test
+    /// \brief set the fitness of the genome under multipleInstanceOpener
     (*(this->genomes[genomeIndex - 1])).SetFitness(fitness);
 
 
@@ -88,13 +91,28 @@ void Learner_NEAT_HyperNEAT::fetchGenomes(){
     }
 
 }
-double Learner_NEAT_HyperNEAT::getBestFitnessOfPopulation(){
-    double max = 0;
+vector<double> Learner_NEAT_HyperNEAT::getBestFitnessOfPopulation(){
+    vector<double> max;
+    max.push_back(0);
+    max.push_back(0);
+
+    int bestGenomeIndex = 0;
     for(int i = 0; i < this->genomes.size(); i++){
-        if( max < this->genomes[i]->GetFitness()){
-            max = this->genomes[i]->GetFitness();
+        if( max[0] < this->genomes[i]->GetFitness()){
+            max[0] = this->genomes[i]->GetFitness();
+            bestGenomeIndex = i;
         }
     }
+
+    NEAT::Genome gen = (*(this->genomes[bestGenomeIndex]));
+    NEAT::NeuralNetwork* net = new NEAT::NeuralNetwork();
+    gen.BuildPhenotype(*net);
+    max[1] = ModularityFactor(*net);
+
+    this->adjacentMatrixOfNNOfLastBestGenome = createAdjacentMatrix(*net);
+    this->NeuronTypesOfLastBestGenome = getTypeOfNeurons(*net);
+    delete net;
+
     return max;
 }
 
@@ -120,11 +138,14 @@ vector<double> Learner_NEAT_HyperNEAT::fromGenomeToNNOutputNEAT(NEAT::Genome gen
     /// Test it
     (*net).Flush();
     (*net).Input(input);
-    (*net).Activate();
+    unsigned int i = (*net).CalculateNetworkDepth();
+    while( i != 0){
+        (*net).Activate();
+        i--;
+    }
 
     /// take and report the output
     vector<double> o = (*net).Output();
-    o.pop_back(); // remove the bias
     delete net;
 
     return o;
@@ -139,18 +160,23 @@ vector<double> Learner_NEAT_HyperNEAT::fromGenomeToNNOutputHyperNEAT(NEAT::Genom
     NEAT::NeuralNetwork* net = new NEAT::NeuralNetwork();
     gen.BuildPhenotype(*net);
     vector<vector<double>>::iterator it = mappingOfConnections.begin();
-    int j = 0;
+
     while( it != mappingOfConnections.end()) {
         vector<double> CPPNInput = *it;
-        CPPNInput.push_back(input[0]);
+        CPPNInput.push_back(input[0]);// add the external input
         /// Test it
         (*net).Flush();
         (*net).Input(CPPNInput);
-        (*net).Activate();
+        unsigned int i = (*net).CalculateNetworkDepth();
+        while( i != 0){
+            (*net).Activate();
+            i--;
+        }
+        //(*net).Activate();
         /// take and report the output
         vector<double> out = (*net).Output();
 
-        for( int j = 0; j < out.size() - 1; j++){// without bias
+        for( int j = 0; j < out.size(); j++){
             o.push_back(out[j]);
         }
 

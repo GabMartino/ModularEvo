@@ -39,6 +39,9 @@ void WorldController::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf){
  */
 void WorldController::OnMsg(ConstVector3dPtr &_msg){
     cout<< "[WORLD] Number of models " <<this->world->ModelCount()<<endl;
+    if( this->ID == 0){
+        this->ID = (unsigned int)_msg->x();
+    }
     if( this->world->ModelCount() < 2){
         cout<< "A new Model will be inserted"<< endl;
         this->world->InsertModelFile("model://Spider");
@@ -49,7 +52,7 @@ void WorldController::OnMsg(ConstVector3dPtr &_msg){
 
     this->pub->WaitForConnection();
     gazebo::msgs::Vector3d msg;// Create Message
-    gazebo::msgs::Set(&msg, ignition::math::Vector3d(37, 37, 37)); // 37 is the ACK for the insertion of a robot
+    gazebo::msgs::Set(&msg, ignition::math::Vector3d(this->ID, 37, 37)); // 37 is the ACK for the insertion of a robot
     this->pub->Publish(msg);//publish
 
 }

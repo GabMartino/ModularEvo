@@ -40,5 +40,8 @@ double ModularityFactor(NEAT::NeuralNetwork& net);
 int ConnectionExists(NEAT::NeuralNetwork& net, int a_to, int a_from);
 int sizeOfNeighborhood(vector<vector<bool>> A, unsigned int node);
 int connectionsInCommon(vector<vector<bool>> A, unsigned int nodeA, unsigned int nodeB);
-
+void printAdjacentMatrix(vector<vector<bool>> A);
+vector<vector<bool>> createAdjacentMatrix(NEAT::NeuralNetwork& net);
+vector<string> getTypeOfNeurons(NEAT::NeuralNetwork& net);
+vector<vector<int>> comb(int N, int K);
 #endif /* UTILS_H */

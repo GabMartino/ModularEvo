@@ -30,9 +30,24 @@ double distance(ignition::math::Pose3d a, ignition::math::Pose3d b){
 
 
 }
+vector<string> getTypeOfNeurons(NEAT::NeuralNetwork& net){
+    vector<string> neuronType;
+    for (int i = 0; i < net.m_neurons.size(); i++){
+        NEAT::NeuronType type = net.m_neurons[i].m_type;
+        if( type == NEAT::INPUT ){
+            neuronType.push_back("I");
+        }else if( type == NEAT::BIAS){
+            neuronType.push_back("B");
+        }else if( type == NEAT::HIDDEN){
+            neuronType.push_back("H");
+        }else if( type == NEAT::OUTPUT){
+            neuronType.push_back("O");
+        }
+    }
 
-double ModularityFactor(NEAT::NeuralNetwork& net){
-
+    return neuronType;
+}
+vector<vector<bool>> createAdjacentMatrix(NEAT::NeuralNetwork& net){
     int numberOfNeurons = net.m_neurons.size();
     vector<vector<bool>> A;
     for(int i = 0; i< numberOfNeurons; i++){
@@ -51,21 +66,68 @@ double ModularityFactor(NEAT::NeuralNetwork& net){
         A.push_back(connectionsVector);
     }
 
-    //directional STRUCTURAL SIMILARITY
-    double TotalStructuralUnsimilarity = 0;
 
-    for(int i = 0; i< numberOfNeurons; i++) {
-        for (int j = 0; j < numberOfNeurons; j++) {
-            if( i != j){
-                double normalization = (net.m_num_inputs + 1)*(net.m_num_outputs + (net.m_neurons.size() - net.m_num_inputs - net.m_num_outputs ));
-                if( normalization ){
-                    TotalStructuralUnsimilarity += connectionsInCommon(A, i, j)/normalization;
+    return A;
+}
+
+double ModularityFactor(NEAT::NeuralNetwork& net){
+    vector<vector<bool>> A = createAdjacentMatrix(net);
+    int numberOfNeurons = net.m_neurons.size();
+    //printAdjacentMatrix(A);
+    //directional STRUCTURAL SIMILARITY
+    double S1 = 0;
+    int N1 = 0;
+    //cout<<" Input combinations"<<endl;
+    vector<vector<int>> combinationInput = comb(net.m_num_inputs, 2);
+    for(int i = 0; i< combinationInput.size(); i++){
+
+        if( net.m_neurons[combinationInput[i][0]].m_type != NEAT::BIAS and net.m_neurons[combinationInput[i][1]].m_type != NEAT::BIAS){
+            //cout<<combinationInput[i][0] << " "<< combinationInput[i][1]<< " " << net.m_neurons[combinationInput[i][0]].m_type<< " "<< net.m_neurons[combinationInput[i][1]].m_type<<endl;
+            S1 += connectionsInCommon(A, combinationInput[i][0], combinationInput[i][1]);
+            N1 +=1;
+        }
+
+    }
+
+    if( S1 and N1){
+
+        N1 *= numberOfNeurons - net.m_num_inputs;
+        S1 = S1/N1;
+    }
+
+    int N2 = 0;
+    double S2 = 0;
+    //cout<<" Hidden combinations"<<endl;
+    combinationInput = comb((numberOfNeurons - net.m_num_outputs - net.m_num_inputs) , 2);
+    for(int i = 0; i< combinationInput.size(); i++){
+        //cout<<net.m_num_inputs + combinationInput[i][0] << " "<< net.m_num_inputs +combinationInput[i][1]<< " " << net.m_neurons[net.m_num_inputs + combinationInput[i][0]].m_type<< " "<< net.m_neurons[net.m_num_inputs + combinationInput[i][1]].m_type<<endl;
+
+        S2 += connectionsInCommon(A, net.m_num_inputs + combinationInput[i][0], net.m_num_inputs + combinationInput[i][1]);
+        N2 +=1;
+    }
+
+    /*
+    //Modularity of hidden
+    for(int i = net.m_num_inputs; i< numberOfNeurons - net.m_num_outputs; i++){
+        for(int j = i; j < numberOfNeurons; j++){
+            if( j > i){
+                NEAT::NeuronType typeA = net.m_neurons[i].m_type;
+                NEAT::NeuronType typeB = net.m_neurons[j].m_type;
+                if(typeA == NEAT::HIDDEN and ( typeB == NEAT::HIDDEN or typeB == NEAT::OUTPUT ) ){
+                    S2 += connectionsInCommon(A, i, j);
+                    N2 += 1;
                 }
             }
-
         }
     }
-    TotalStructuralUnsimilarity = 1 - TotalStructuralUnsimilarity;
+    */
+    if(N2 and S2){
+        N2 *= ( net.m_num_outputs + 1);
+        S2 = S2/N2;
+    }
+    double TotalStructuralUnsimilarity = 1 - S1 - S2;
+    //cout<<"Inputs mod, Hiddens Modularity"<<endl;
+    //cout<<S1<< " "<<S2<<endl;
     return TotalStructuralUnsimilarity;
 
 }
@@ -90,7 +152,7 @@ int connectionsInCommon(vector<vector<bool>> A, unsigned int nodeA, unsigned int
     return counter;
 
 }
-int ConnectionExists(NEAT::NeuralNetwork& net, int a_to, int a_from)
+int ConnectionExists(NEAT::NeuralNetwork& net, int a_from, int a_to)
 {
     for (unsigned int i = 0; i < net.m_connections.size(); i++)
     {
@@ -102,4 +164,32 @@ int ConnectionExists(NEAT::NeuralNetwork& net, int a_to, int a_from)
     }
 
     return -1;
+}
+void printAdjacentMatrix(vector<vector<bool>> A){
+    for(int i = 0; i < A.size(); i++){
+        for(int j = 0; j < A[0].size(); j++){
+            cout<<A[i][j]<<" ";
+        }
+        cout<<endl;
+    }
+
+}
+vector<vector<int>> comb(int N, int K){
+    vector<vector<int>> combinations;
+    if( N >= K ){
+
+        std::string bitmask(K, 1); // K leading 1's
+        bitmask.resize(N, 0); // N-K trailing 0's
+
+        // print integers and permute bitmask
+        do {
+            vector<int> comb;
+            for (int i = 0; i < N; ++i) // [0..N-1] integers
+            {
+                if (bitmask[i]) comb.push_back(i);
+            }
+            combinations.push_back(comb);
+        } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
+    }
+    return combinations;
 }

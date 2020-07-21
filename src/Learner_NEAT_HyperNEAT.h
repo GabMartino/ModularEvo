@@ -12,7 +12,6 @@ using namespace std;
 
 class Learner_NEAT_HyperNEAT {
 protected:
-
     //NEAT PARAMETERS
     NEAT::Parameters* params;
     NEAT::Genome* gen;
@@ -27,21 +26,26 @@ protected:
     public: unsigned int generation = 1;
     experiment kindOfEncoding;
     bool useModularity = true;
-    double alfa = 0.5;
+    double alfa = 0.8;
     //USED IF HYPERNEAT
     vector<vector<double>> mappingOfConnections;
+
+
+
 public:
+    vector<vector<bool>> adjacentMatrixOfNNOfLastBestGenome;
+    vector<string> NeuronTypesOfLastBestGenome;
 
     Learner_NEAT_HyperNEAT(experiment kindOfEncoding, unsigned int n_input, unsigned int n_output);
     void setAlfa(double a){ this->alfa = a; };
     void setMapOfConnections(vector<vector<double>> map){ this->mappingOfConnections = map;};
-    double step(double fitness);
+    vector<double> step(double fitness);
     vector<double>  getOutput(vector<double> input);
     vector<double> fromGenomeToNNOutputNEAT(NEAT::Genome gen, vector<double> input);
     vector<double> fromGenomeToNNOutputHyperNEAT(NEAT::Genome gen, vector<double> input);
 private:
     void fetchGenomes();
-    double getBestFitnessOfPopulation();
+    vector<double> getBestFitnessOfPopulation();
 };
 
 

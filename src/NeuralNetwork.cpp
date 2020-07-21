@@ -27,12 +27,20 @@ NeuralNetwork::NeuralNetwork(vector<string> jointNames, sdf::ElementPtr _sdf){
             /// Add a reversed connection if is mutual
             if(connect->GetAttribute("mutual")->GetAsString().compare("True")){
                 oscillators[to->GetAttribute("name")->GetAsString()]->addConnection(oscillators[connect->GetAttribute("name")->GetAsString()]);
-                numberOfParameters += 1;
+                //numberOfParameters += 1; // the mutual weight is already included
             }
             to = to->GetNextElement("to");
         }
         connect = connect->GetNextElement("connect");
     }
+    /**
+     * THis is important to create the matrix of the differential equations after set the connections
+     */
+    for( auto i = 0; i < jointNames.size() ; i++){
+        oscillators[jointNames[i]]->finalize();
+    }
+
+
     cout<<"[NN] Create the CPPN inputs in case the HYPERNEAT is used."<<endl;
     /// Create the CPPN inputs
     fetchMapOfConnections();
@@ -45,7 +53,7 @@ NeuralNetwork::NeuralNetwork(vector<string> jointNames, sdf::ElementPtr _sdf){
 void NeuralNetwork::printNeuralNetwork(){
     map<string, Oscillator*>::iterator it = oscillators.begin();
     while( it != oscillators.end()){
-        it->second->printConnections();
+        it->second->printAllParameters();
         it++;
     }
 }
@@ -63,18 +71,29 @@ double NeuralNetwork::getOutputOfOscillator(string key){
 
 /**
  * This method should be called at every increment of time step.
- * Used for the test of robot
+ * Used for the multipleInstanceOpener of robot
  *
  */
-void NeuralNetwork::update(){
+void NeuralNetwork::update(const double actualTime){
 
+    /**
+     * This two while loop are important to be set in consecutio,
+     * because the first solved the approximated differential equations,
+     * the second update the value of the state variables
+     *
+     */
     map<string, Oscillator*>::iterator it = oscillators.begin();
 
     while( it != oscillators.end()){
-        it->second->update();
+        it->second->update(actualTime);
         it++;
     }
-
+    it = oscillators.begin();
+    while( it != oscillators.end()){
+        it->second->setStateEquations();
+        it++;
+    }
+    //exit(0);
 }
 
 /**
@@ -84,6 +103,7 @@ void NeuralNetwork::update(){
  *
  */
 void NeuralNetwork::setParameters(vector<double> param){
+
     if( param.size() != numberOfParameters ){
         cout<<param.size() << "   "<< numberOfParameters<<endl;
         cerr<< "[NN] Wrong number of parameters"<<endl;
@@ -97,21 +117,31 @@ void NeuralNetwork::setParameters(vector<double> param){
         vector<double>::iterator first = j;
         vector<double>::iterator last = j + 7;
         vector<double> oscillatorParams(first, last);
+
         (*(it->second)).setParameters(oscillatorParams);// set the seven parameteres
         it++;
-        j = j + 7;
+        if( it != oscillators.end())
+            j = j + 7;
     }
     it = oscillators.begin();
+    map<string, string> alreadySetMutualConnections;
     while( it != oscillators.end() ){
 
         vector<Oscillator*> temp = it->second->getAdjacentOscillators();
         for( auto o = 0 ; o < temp.size() ; o++) {
-            it->second->setOutsideConnection(temp[o]->getName(), *j);
-            j++;
+            if (alreadySetMutualConnections[it->first] != temp[o]->getName() )
+            {
+                it->second->setOutsideConnection(temp[o]->getName(), *j);
+                temp[o]->setOutsideConnection(it->first, -(*j)); // add the mutual weight that is the opposite
+                alreadySetMutualConnections[it->first] = temp[o]->getName();
+                alreadySetMutualConnections[temp[o]->getName()] = it->first;
+                j++;
+            }
         }
         it++;
 
     }
+
 }
 
 /**
@@ -154,7 +184,22 @@ void NeuralNetwork::fetchMapOfConnections(){
             double x2 = castFromStringToCoordinates(it->second->getAdjacentOscillators()[i]->getName())[0];
             double y2 = castFromStringToCoordinates(it->second->getAdjacentOscillators()[i]->getName())[1];
             vector<double> row = { x1, y1, z1, x2, y2};
-            mappingOfConnections.push_back(row);
+            /**
+             * Check if already exists a connection, if exstis not create a new one in the map
+             * because the resulting weight is simply the opposite
+             *
+             */
+            bool insert = true;
+            for( int j = 0; j < mappingOfConnections.size() ; j++){
+                if(mappingOfConnections[j][2] == 1 ){
+                    if( mappingOfConnections[j][0] == x2 and mappingOfConnections[j][1] == y2 and  mappingOfConnections[j][3] == x1 and mappingOfConnections[j][4] == y1){
+                        insert = false;
+                    }
+                }
+            }
+            if(insert){
+                mappingOfConnections.push_back(row);
+            }
 
         }
         it++;
