@@ -46,7 +46,7 @@ class GazeboMessageSubscriber:
             self.receiveNN = self.manager.subscribe('/gazebo/default/nnMatrixTopic', 'gazebo.msgs.GzString_V', self.matrixCallback)
 
             await self.receiver.wait_for_connection()
-            self.filename += experiment+".csv"
+            self.filename += str(experiment)+".csv"
             if experiment == 45:
                 with open(self.filename, "w") as file:
                     file.write("Experiment of DIRECT ENCODING \n")
