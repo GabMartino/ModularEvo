@@ -46,11 +46,13 @@ protected:
 
     vector<double> externalInput;
 
+    bool startBrain = false;
 public:
 
     /// Constructor
-    CPG_NEAT_HYPERNEAT_Brain(physics::ModelPtr model,  sdf::ElementPtr _sdf, experiment kindOfEncoding, vector<double> input);
+    CPG_NEAT_HYPERNEAT_Brain(physics::ModelPtr model,  sdf::ElementPtr _sdf, experiment kindOfEncoding, vector<double> input, string resultNameFile, string memory, bool useMemory);
 
+    ~CPG_NEAT_HYPERNEAT_Brain();
 
     /// This method should be called at every increment of time step. Used for the multipleInstanceOpener of robot
     void update(const double actualTime);
@@ -60,10 +62,13 @@ public:
      * Set the fitness of the genome that was under multipleInstanceOpener (distance), take the next genome and put that under multipleInstanceOpener,
      * or initialize the next generation
      */
-    vector<double> stepOfTest(const ::gazebo::common::UpdateInfo _info, double distance);
+    vector<double> stepOfTest(double distance);
 
     vector<vector<bool>> getAdjacentMatrixOfLastBestGenome(){ return this->learner->adjacentMatrixOfNNOfLastBestGenome; };
     vector<string> getTypesNeuronsOfLastBestGenome(){ return this->learner->NeuronTypesOfLastBestGenome; };
+    void ActivateTheBrain();
+    void DectivateTheBrain();
+    bool GetBrainState(){ return this->startBrain;};
 };
 
 

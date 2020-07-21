@@ -21,9 +21,7 @@ class GazeboMessageSubscriber:
         self.timeout = timeout
         self.generationCounter = 0
         self.lastFitness = 0
-        self.f = open("./results/"+str(self.ID)+".csv", "w")
-        self.f.close()
-
+        self.filename = "./results/"+str(self.ID)+"_"
 
     async def connect(self):
         for i in range(self.timeout):
@@ -36,7 +34,7 @@ class GazeboMessageSubscriber:
                 pass
             await asyncio.sleep(0.5)
 
-    async def executeTest(self, experiment):
+    async def executeTest(self, experiment, continueLearning):
         if self.connected:
             self.publisherToInsertModels = await self.manager.advertise('/gazebo/default/receiveModels',
                                                                         'gazebo.msgs.Vector3d')
@@ -48,18 +46,22 @@ class GazeboMessageSubscriber:
             self.receiveNN = self.manager.subscribe('/gazebo/default/nnMatrixTopic', 'gazebo.msgs.GzString_V', self.matrixCallback)
 
             await self.receiver.wait_for_connection()
-            self.f = open("./results/"+str(self.ID)+".csv", "a")
-
+            self.filename += experiment+".csv"
             if experiment == 45:
-                self.f.write("Experiment of DIRECT ENCODING \n")
+                with open(self.filename, "w") as file:
+                    file.write("Experiment of DIRECT ENCODING \n")
             elif experiment == 125:
-                self.f.write("Experiment of DIRECT ENCODING \n")
+                with open(self.filename, "w") as file:
+                    file.write("Experiment of INDIRECT ENCODING \n")
             elif experiment == 86:
-                self.f.write("Experiment of DIRECT ENCODING WITH MODULARITY \n" )
+                with open(self.filename, "w") as file:
+                    file.write("Experiment of DIRECT ENCODING WITH MODULARITY \n" )
             elif experiment == 101:
-                self.f.write("Experiment of INDIRECT ENCODING WITH MODULARITY \n")
+                with open(self.filename, "w") as file:
+                    file.write("Experiment of INDIRECT ENCODING WITH MODULARITY \n")
 
-            self.f.write("Generation, Fitness, Modularity \n")
+            with open(self.filename, "a") as file:
+                file.write("Generation, Fitness, Modularity \n")
 
             self.running = True
 
@@ -76,7 +78,7 @@ class GazeboMessageSubscriber:
 
                 await self.receiveNN.wait_for_connection()
                 if not self.simulationActivated:
-                    await self.tryToActivateSimulation(experiment)
+                    await self.tryToActivateSimulation(experiment, continueLearning)
                     print("Simulation ACTIVATED")
 
 
@@ -104,7 +106,7 @@ class GazeboMessageSubscriber:
             attempt += 1
 
 
-    async def tryToActivateSimulation(self, kindOfSimulation):
+    async def tryToActivateSimulation(self, kindOfSimulation, continueLearning):
 
         attempt = 1
         while not self.simulationActivated:
@@ -116,7 +118,8 @@ class GazeboMessageSubscriber:
             ## 86 = DIRECT ENCODING MODULAR, 87 = ACK
             ## 101 = INDIRECT ENCODING MODULAR, 102 = ACK
             message.x = self.ID
-            message.y = message.z = kindOfSimulation
+            message.y = kindOfSimulation
+            message.z = continueLearning
             try:
                 await self.publisherToActivateSimulation.publish(message)
             except Exception as e:
@@ -135,7 +138,10 @@ class GazeboMessageSubscriber:
             ## Model inserted ACK
             if message.y == 37:
                 self.modelInserted = True
-
+            elif message.y == 1:
+                print("Closing procedure\n")
+                self.f.close()
+                exit(0)
 
             ## Simulation activation ACK
             elif message.y == 46 or message.y == 126 or message.y == 87 or message.y == 102:
@@ -148,8 +154,11 @@ class GazeboMessageSubscriber:
                 self.lastFitness = message.z
                 #print(message.z)
             elif message.y == 59:
-                self.f.write(str(self.generationCounter) + ", " + str(self.lastFitness) + ", " + str(message.z) + "\n")
+                with open(self.filename, "a") as file:
+                    file.write(str(self.generationCounter) + ", " + str(self.lastFitness) + ", " + str(message.z) + "\n")
+
                 print("Generation " +str(self.generationCounter) + " Fitness: " + str(self.lastFitness)+ " Modularity:" + str(message.z))
+                self.f.flush()
                 #print(message.z)
 
         
@@ -185,7 +194,7 @@ class GazeboMessageSubscriber:
             l = {}
             for i, label in enumerate(labels):
                 l[i] = label
-            self.show_graph_with_labels(adjacentMatrix, l)
+            ##self.show_graph_with_labels(adjacentMatrix, l)
 
 
 

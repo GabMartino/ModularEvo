@@ -46,6 +46,13 @@ NeuralNetwork::NeuralNetwork(vector<string> jointNames, sdf::ElementPtr _sdf){
     fetchMapOfConnections();
 
 }
+
+NeuralNetwork::~NeuralNetwork(){
+    map<string, Oscillator*>::iterator it = oscillators.begin();
+    while(it != oscillators.end()){
+        delete it->second;
+    }
+}
 /**
  * This method will print the names of the neuron (Oscillators) and their connections
  *

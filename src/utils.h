@@ -19,6 +19,7 @@ using namespace std;
 
 enum experiment{
     VOID = 0,
+    CLOSE = 1,
     INSERTION_ACK = 37,
     DIRECT = 45,
     INDIRECT = 125,
@@ -44,4 +45,6 @@ void printAdjacentMatrix(vector<vector<bool>> A);
 vector<vector<bool>> createAdjacentMatrix(NEAT::NeuralNetwork& net);
 vector<string> getTypeOfNeurons(NEAT::NeuralNetwork& net);
 vector<vector<int>> comb(int N, int K);
+
+bool checkIfTheFileIsNotEmpty(string filename);
 #endif /* UTILS_H */

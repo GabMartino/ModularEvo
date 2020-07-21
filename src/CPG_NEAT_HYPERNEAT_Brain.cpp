@@ -4,7 +4,7 @@
 
 #include "CPG_NEAT_HYPERNEAT_Brain.h"
 
-CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf::ElementPtr _sdf, experiment kindOfEncoding, vector<double> input){
+CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf::ElementPtr _sdf, experiment kindOfEncoding, vector<double> input, string resultNameFile, string memory, bool useMemory){
 
     cout<<"[BRAIN] Preparing the brain."<<endl;
     /**
@@ -52,27 +52,39 @@ CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf
     this->externalInput = input;
 
     cout<<"[BRAIN]";
+
     if( this->kindOfEncoding == DIRECT or this->kindOfEncoding == DIRECT_MOD){    //NEAT
 
         cout<<"     Set NEAT Parameters for DIRECT Encoding"<<endl;
-
-        /// Initialize the learning algorithm
-        this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, this->externalInput.size()+1, this->nn->getNumberOfParameters());
-
+/// Initialize the learning algorithm
+        if(useMemory){
+            this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, this->externalInput.size()+1, this->nn->getNumberOfParameters(), memory );
+        }else{
+            this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, this->externalInput.size()+1, this->nn->getNumberOfParameters());
+        }
+        this->learner->setBestGenomeFileName(resultNameFile);
+        //start and stop the learner just to take the first parameters
+        this->learner->StartLearning();
         this->nn->setParameters(this->learner->getOutput(this->externalInput));
-
+        this->learner->StopLearning();
     }else if( this->kindOfEncoding == INDIRECT or this->kindOfEncoding == INDIRECT_MOD){ //HYPERNEAT
 
         cout<<"     Set HyperNEAT Parameters for INDIRECT Encoding."<<endl;
 
         unsigned int n_input = (this->nn->getMapOfConnections())[0].size() + this->externalInput.size() + 1;
         unsigned int n_output = 3; // values of the equations
-        this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, n_input, n_output);
+        if(useMemory){
+            this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, n_input, n_output, memory);
+        }else{
+            this->learner = new Learner_NEAT_HyperNEAT(this->kindOfEncoding, n_input, n_output);
+        }
 
+        this->learner->setBestGenomeFileName(resultNameFile);
+        //start and stop the learner just to take the first parameters
+        this->learner->StartLearning();
         this->learner->setMapOfConnections(this->nn->getMapOfConnections());
-
         this->nn->setParameters(removeUnusedOutput(this->learner->getOutput(this->externalInput)));
-
+        this->learner->StopLearning();
 
     }else{
         cout<<"     ERROR choosing kind of encoding."<<endl;
@@ -82,7 +94,14 @@ CPG_NEAT_HYPERNEAT_Brain::CPG_NEAT_HYPERNEAT_Brain( physics::ModelPtr model, sdf
     cout<<"[BRAIN] Brain Prepared."<<endl;
 }
 
-
+CPG_NEAT_HYPERNEAT_Brain::~CPG_NEAT_HYPERNEAT_Brain(){
+    delete nn;
+    delete learner;
+    map<string, JointPositionMotor*>::iterator it = joints.begin();
+    while( it != joints.end()){
+        delete it->second;
+    }
+}
 /**
  * This method update the NN representing the robot, and use that new parameters to update
  * the underneath controller in time.
@@ -108,21 +127,39 @@ void CPG_NEAT_HYPERNEAT_Brain::update(const double actualTime) {
  * @param _info
  * @param distance
  */
-vector<double> CPG_NEAT_HYPERNEAT_Brain::stepOfTest(const ::gazebo::common::UpdateInfo _info, double distance){
+vector<double> CPG_NEAT_HYPERNEAT_Brain::stepOfTest(double distance){
+    vector<double> checkBestFitnessAvailable;
+    if(this->startBrain){
+        if( this->learner->GetStateOfLearning()){
+            checkBestFitnessAvailable = this->learner->step(distance);
+            vector<double> params;
+            if(this->learner->GetStateOfLearning() and this->kindOfEncoding == DIRECT or this->kindOfEncoding == DIRECT_MOD){
+                params = this->learner->getOutput(this->externalInput);
+            }else if(this->learner->GetStateOfLearning() and this->kindOfEncoding == INDIRECT or this->kindOfEncoding == INDIRECT_MOD){
+                params = removeUnusedOutput(this->learner->getOutput(this->externalInput));
+            }
+            if(params.size() > 0)
+                this->nn->setParameters(params);
 
-    vector<double> checkBestFitnessAvailable = this->learner->step(distance);
+        }else{
+            cout<<"THE EXPERIMENT IS FINISHED. CLOSURE PROCEDURE."<<endl;
+            this->startBrain = false;
+        }
 
-    if(this->kindOfEncoding == DIRECT or this->kindOfEncoding == DIRECT_MOD){
-
-        this->nn->setParameters(this->learner->getOutput(this->externalInput));
-
-    }else if(this->kindOfEncoding == INDIRECT or this->kindOfEncoding == INDIRECT_MOD){
-        vector<double> params = removeUnusedOutput(this->learner->getOutput(this->externalInput));
-
-        this->nn->setParameters(params);
-
+    }else{
+        cout<<" THE BRAIN IS NOT ACTIVE. PLEASE ACTIVATE THE BRAIN."<<endl;
     }
+
     return checkBestFitnessAvailable;
+}
+
+void CPG_NEAT_HYPERNEAT_Brain::ActivateTheBrain(){
+    this->startBrain = true;
+    this->learner->StartLearning();
+}
+void CPG_NEAT_HYPERNEAT_Brain::DectivateTheBrain(){
+    this->startBrain = false;
+    this->learner->StopLearning();
 }
 
 vector<double> CPG_NEAT_HYPERNEAT_Brain::removeUnusedOutput(vector<double> out){

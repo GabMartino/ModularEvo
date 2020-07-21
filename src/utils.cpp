@@ -193,3 +193,14 @@ vector<vector<int>> comb(int N, int K){
     }
     return combinations;
 }
+
+bool checkIfTheFileIsNotEmpty(string filename){
+    FILE * pFile;
+    pFile = fopen (filename.c_str(),"r");
+    if (pFile!=NULL){
+        fclose (pFile);
+        return true;
+    }else{
+        return false;
+    }
+}

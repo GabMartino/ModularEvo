@@ -31,7 +31,8 @@ private:
 public:
     /// Constructor take the names of the joint and the sdf model to build the neural network
     NeuralNetwork(vector<string> jointNames, sdf::ElementPtr _sdf);
-
+    /// Destructor
+    ~NeuralNetwork();
     /// Getter
     map<string, Oscillator*> getOscillators(){ return oscillators; };
 

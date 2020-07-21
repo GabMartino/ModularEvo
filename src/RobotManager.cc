@@ -88,13 +88,18 @@ namespace gazebo{
             }
 
             externalInput.push_back(1);
+            bool useMemory = _msg->z();
+
+            stringstream buffer;
+            buffer<< "bestGenome_"<<this->ID<<"_"<<this->simulation<<".txt";
+            string storageName = buffer.str();
 
             /// Create the brain
-            this->brain_ = new CPG_NEAT_HYPERNEAT_Brain(this->model, this->sdf, this->simulation, this->externalInput);
+            this->brain_ = new CPG_NEAT_HYPERNEAT_Brain(this->model, this->sdf, this->simulation, this->externalInput, storageName, storageName, useMemory);
 
             /// Activate the simulation
             this->activeSimulation = true;
-
+            this->brain_->ActivateTheBrain();// start the brain
 
         }else{
             cout<<" Resend ACK."<<endl;
@@ -136,7 +141,7 @@ namespace gazebo{
 
                 distanceTravelled = distanceTravelled > 1.0 ? 1 : distanceTravelled;// normalize in a range [0,1]
 
-                vector<double> fitness = this->brain_->stepOfTest(_info, distanceTravelled);/// set Fitness and go ahead with the simulation
+                vector<double> fitness = this->brain_->stepOfTest(distanceTravelled);/// set Fitness and go ahead with the simulation
 
                 if(fitness[0]){
                     /// send back to the manager the best fitness of the population
@@ -148,6 +153,15 @@ namespace gazebo{
                 lastTestTime_ = _info.simTime;
 
                 this->lastPosition = this->model->WorldPose();/// reset the new position of the robot
+                if(!this->brain_->GetBrainState()){
+                    this->activeSimulation = false;
+                    cout<<"[ROBOT] THE SIMULATION IS FINISHED. CLOSING PROCEDURE."<<endl;
+                    // todo send ack to python manager
+                    sendAck(CLOSE);
+                    usleep(1000);
+                    client::shutdown();
+
+                }
             }
             //this->activeSimulation = false; //for multipleInstanceOpener
         }
@@ -173,7 +187,9 @@ namespace gazebo{
 
 
     }
-
+    RobotManager::~RobotManager(){
+        delete this->brain_;
+    }
     void RobotManager::sendNN(vector<vector<bool>> A, vector<string> types){
         cout<<"[ROBOT] Sending NN structure."<<endl;
         this->pubSenderMatrix->WaitForConnection();

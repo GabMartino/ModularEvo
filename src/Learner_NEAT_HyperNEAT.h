@@ -19,7 +19,7 @@ protected:
     vector<NEAT::Species>* species;
     vector<NEAT::Genome*> genomes;
 
-
+    unsigned int maxNumberOfGenerations = 1;
     /// \brief genome of the population currently under simulation
     unsigned int genomeIndex = 0;
     /// \brief Counter of the generations
@@ -29,20 +29,31 @@ protected:
     double alfa = 0.8;
     //USED IF HYPERNEAT
     vector<vector<double>> mappingOfConnections;
-
-
+    string bestGenomeFileName = "";
+    bool startLearning = false;
 
 public:
     vector<vector<bool>> adjacentMatrixOfNNOfLastBestGenome;
     vector<string> NeuronTypesOfLastBestGenome;
 
     Learner_NEAT_HyperNEAT(experiment kindOfEncoding, unsigned int n_input, unsigned int n_output);
+    Learner_NEAT_HyperNEAT(experiment kindOfEncoding, unsigned int n_input, unsigned int n_output, string starterGenomeFileName);
+
+    ~Learner_NEAT_HyperNEAT();
+    void initParams();
     void setAlfa(double a){ this->alfa = a; };
     void setMapOfConnections(vector<vector<double>> map){ this->mappingOfConnections = map;};
     vector<double> step(double fitness);
     vector<double>  getOutput(vector<double> input);
     vector<double> fromGenomeToNNOutputNEAT(NEAT::Genome gen, vector<double> input);
     vector<double> fromGenomeToNNOutputHyperNEAT(NEAT::Genome gen, vector<double> input);
+    void setBestGenomeFileName(string bestGenomeFileName){ this->bestGenomeFileName= bestGenomeFileName;};
+    void StartLearning(){ if(bestGenomeFileName != ""){
+                                this->startLearning = true;
+                            }else{ cout<<"You cannot start the learner without setting the filename for the best genome.";}
+                            };
+    void StopLearning(){ this->startLearning = false;};
+    bool GetStateOfLearning(){ return this->startLearning;};
 private:
     void fetchGenomes();
     vector<double> getBestFitnessOfPopulation();

@@ -21,5 +21,6 @@ loop.run_until_complete(Subscriber.connect())
 ## 101 = INDIRECT ENCODING MODULAR, 102 = ACK
 
 experiment = int(sys.argv[2])
-loop.run_until_complete(Subscriber.executeTest(experiment))
+continueLearning = 0
+loop.run_until_complete(Subscriber.executeTest(experiment,continueLearning))
 

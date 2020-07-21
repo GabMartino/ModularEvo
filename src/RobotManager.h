@@ -8,7 +8,9 @@
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
+#include <gazebo/gazebo_client.hh>
 #include <iostream>
+#include <unistd.h>
 #include <cmath>
 #include <map>
 
@@ -78,7 +80,9 @@ namespace gazebo{
         /// \brief this is the external input derived from the environment
         vector<double> externalInput;
 
+
   public:
+        ~RobotManager();
       /// Initialize all the Plugin
         void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
       /// Handle the incoming messages

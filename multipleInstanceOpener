@@ -6,12 +6,12 @@ function experimentInstance {
     gnome-terminal  -- bash -c "cd ~/Scrivania/ModularEvo/models && export GAZEBO_MASTER_URI=http://localhost:$1 && gzserver spider.world --verbose"
     sleep 1
     gnome-terminal  -- bash -c "cd ~/Scrivania/ModularEvo && source venv/bin/activate && python3 ExecuteTest.py $1 $2"
-    sleep 1
-    gnome-terminal  -- bash -c "cd ~/Scrivania/ModularEvo && export GAZEBO_MASTER_URI=http://localhost:$1 && gzclient"
+    ##sleep 1
+    ##gnome-terminal  -- bash -c "cd ~/Scrivania/ModularEvo && export GAZEBO_MASTER_URI=http://localhost:$1 && gzclient"
 }
 
 COUNTER=0
-NUMBEROFEXPERIMENTS=1
+NUMBEROFEXPERIMENTS=2
  while [  $COUNTER -lt $NUMBEROFEXPERIMENTS ]; do
      NEWPORT=$((PORT+COUNTER))
      experimentInstance $NEWPORT $EXPERIMENT
